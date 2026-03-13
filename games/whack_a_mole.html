@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Whack-A-Mole - JC Mini Games</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --accent: #2196F3;
+            --text: #ffffff;
+            --hole: #000000;
+            --radius: 15px;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            height: 100vh; overflow: hidden; touch-action: manipulation;
+        }
+
+        /* Top Bar */
+        .stats-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--card);
+            margin: 15px; border-radius: var(--radius);
+            width: 85%; max-width: 400px;
+        }
+
+        .stats-bar a { color: var(--accent); text-decoration: none; font-weight: bold; }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .stat-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); display: block; }
+
+        /* Game Grid */
+        .game-grid {
+            width: 90vw; max-width: 380px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .hole {
+            aspect-ratio: 1;
+            background: var(--hole);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 10px 15px rgba(0,0,0,0.5);
+            border: 4px solid #252525;
+        }
+
+        /* The Mole */
+        .mole {
+            width: 80%;
+            height: 80%;
+            position: absolute;
+            bottom: -100%; /* Hidden by default */
+            left: 10%;
+            background: linear-gradient(to bottom, #8d6e63, #5d4037);
+            border-radius: 50% 50% 20% 20%;
+            transition: bottom 0.1s ease-out;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+        }
+
+        .mole.up { bottom: 10%; }
+
+        /* Hit effect */
+        .mole.hit {
+            transform: scale(0.9);
+            filter: brightness(1.5);
+        }
+
+        .controls { margin-top: 40px; }
+        button {
+            background: var(--accent); color: white; border: none;
+            padding: 15px 40px; border-radius: 30px; font-size: 1.2rem;
+            font-weight: bold; cursor: pointer; transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+        }
+        button:active { transform: scale(0.95); }
+        button:disabled { background: #444; box-shadow: none; opacity: 0.6; }
+    </style>
+</head>
+<body>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <span class="stat-label">Score</span>
+            <span class="stat-val" id="score">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Time</span>
+            <span class="stat-val" id="timer">30s</span>
+        </div>
+        <a href="../index.html">← EXIT</a>
+    </div>
+
+    <div class="game-grid">
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+        <div class="hole"><div class="mole" onclick="whack(this)">🐹</div></div>
+    </div>
+
+    <div class="controls">
+        <button id="start-btn" onclick="startGame()">START GAME</button>
+    </div>
+
+    <script>
+        const moles = document.querySelectorAll('.mole');
+        const scoreBoard = document.getElementById('score');
+        const timerBoard = document.getElementById('timer');
+        const startBtn = document.getElementById('start-btn');
+
+        let lastHole;
+        let timeUp = false;
+        let score = 0;
+        let countdown;
+        let gameTimer;
+
+        function randomTime(min, max) {
+            return Math.round(Math.random() * (max - min) + min);
+        }
+
+        function randomHole(moles) {
+            const idx = Math.floor(Math.random() * moles.length);
+            const hole = moles[idx];
+            if (hole === lastHole) return randomHole(moles);
+            lastHole = hole;
+            return hole;
+        }
+
+        function peep() {
+            const time = randomTime(600, 1200); // Speed of mole popping
+            const mole = randomHole(moles);
+            mole.classList.add('up');
+            mole.classList.remove('hit');
+            
+            setTimeout(() => {
+                mole.classList.remove('up');
+                if (!timeUp) peep();
+            }, time);
+        }
+
+        function startGame() {
+            score = 0;
+            scoreBoard.textContent = 0;
+            timeUp = false;
+            startBtn.disabled = true;
+            
+            let timeLeft = 30;
+            timerBoard.textContent = timeLeft + 's';
+
+            // Start moles
+            peep();
+
+            // Game countdown
+            countdown = setInterval(() => {
+                timeLeft--;
+                timerBoard.textContent = timeLeft + 's';
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    timeUp = true;
+                    startBtn.disabled = false;
+                    alert("Time's Up! Final Score: " + score);
+                }
+            }, 1000);
+        }
+
+        function whack(mole) {
+            if (!mole.classList.contains('up') || mole.classList.contains('hit')) return;
+            
+            // Haptic-like visual feedback
+            mole.classList.add('hit');
+            mole.classList.remove('up');
+            
+            score++;
+            scoreBoard.textContent = score;
+
+            // Optional: You can add a 'POW!' text animation here
+        }
+    </script>
+</body>
+</html>
