@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JC Mini Games</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        :root {
+            --bg-dark: #0f121d;
+            --search-bg: #1c1f2e;
+            --text-main: #ffffff;
+            --text-dim: #b0b3b8;
+            --accent-yellow: #fde047;
+            
+            /* Screenshot Palette */
+            --card-red: #ff5e6c;
+            --card-purple: #9d6efd;
+            --card-blue: #6376f1;
+            --card-teal: #50d8d7;
+            --card-orange: #ffb347;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--accent-yellow);
+            font-size: 3.5rem;
+            margin: 0;
+            font-weight: 800;
+        }
+
+        .header h2 {
+            font-size: 1.8rem;
+            margin: 5px 0;
+        }
+
+        .header p {
+            color: var(--text-dim);
+            font-size: 1rem;
+        }
+
+        /* Search Bar */
+        .search-container {
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            background: var(--search-bg);
+            border: 2px solid #3f4e8d;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+        }
+
+        /* Games Grid */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .game-card {
+            border-radius: 25px;
+            padding: 20px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            min-height: 140px;
+        }
+
+        .game-card:active {
+            transform: scale(0.95);
+        }
+
+        .icon-box {
+            background: rgba(255, 255, 255, 0.2);
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .game-card h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .game-card p {
+            margin: 5px 0 0;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        /* Colors for specific games */
+        .c-red { background-color: var(--card-red); }
+        .c-purple { background-color: var(--card-purple); }
+        .c-blue { background-color: var(--card-blue); }
+        .c-teal { background-color: var(--card-teal); }
+        .c-orange { background-color: var(--card-orange); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>JC</h1>
+        <h2>Mini Games</h2>
+        <p>Choose your adventure</p>
+    </div>
+
+    <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="gameSearch" placeholder="Search games..." onkeyup="filterGames()">
+    </div>
+
+    <div class="game-grid" id="gameGrid">
+        <a href="games/whack_a_mole.html" class="game-card c-teal" data-name="whack a mole">
+            <div class="icon-box">🔨</div>
+            <h3>Whack-a-Mole</h3>
+            <p>Hit the moles</p>
+        </a>
+
+        <a href="games/memory_match.html" class="game-card c-blue" data-name="memory match">
+            <div class="icon-box">🎴</div>
+            <h3>Memory Match</h3>
+            <p>Find matching pairs</p>
+        </a>
+
+        <a href="games/minesweeper.html" class="game-card c-orange" data-name="minesweeper">
+            <div class="icon-box">💣</div>
+            <h3>Minesweeper</h3>
+            <p>Avoid the bombs</p>
+        </a>
+
+        <a href="games/quick_math.html" class="game-card c-red" data-name="quick math">
+            <div class="icon-box">➕</div>
+            <h3>Quick Math</h3>
+            <p>Solve it fast</p>
+        </a>
+
+        <a href="games/pool.html" class="game-card c-purple" data-name="pool billiard">
+            <div class="icon-box">🎱</div>
+            <h3>8-Ball Pool</h3>
+            <p>Pocket the balls</p>
+        </a>
+
+        <a href="games/checkers.html" class="game-card c-red" data-name="checkers ai">
+            <div class="icon-box">🏁</div>
+            <h3>Checkers</h3>
+            <p>Play against AI</p>
+        </a>
+
+        <a href="games/brick_breaker.html" class="game-card c-blue" data-name="brick breaker">
+            <div class="icon-box">🧱</div>
+            <h3>Brick Breaker</h3>
+            <p>Arcade classic</p>
+        </a>
+
+        <a href="games/word_guess.html" class="game-card c-teal" data-name="word guess">
+            <div class="icon-box">🔠</div>
+            <h3>Word Guess</h3>
+            <p>Find the secret word</p>
+        </a>
+
+        <a href="games/dominoes.html" class="game-card c-purple" data-name="dominoes">
+            <div class="icon-box">🀄</div>
+            <h3>Dominoes</h3>
+            <p>Match the dots</p>
+        </a>
+    </div>
+
+    <div class="footer">Have fun playing!</div>
+
+    <script>
+        function filterGames() {
+            let input = document.getElementById('gameSearch').value.toLowerCase();
+            let cards = document.getElementsByClassName('game-card');
+
+            for (let i = 0; i < cards.length; i++) {
+                let name = cards[i].getAttribute('data-name');
+                if (name.includes(input)) {
+                    cards[i].style.display = "flex";
+                } else {
+                    cards[i].style.display = "none";
+                }
+            }
+        }
+    </script>
+</body>
+</html>
