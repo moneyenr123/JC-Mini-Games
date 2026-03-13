@@ -6,172 +6,179 @@
     <title>Snake - JC Mini Games</title>
     <style>
         :root {
-            --bg: #121212;
-            --card: #1e1e1e;
-            --accent: #2196F3;
-            --food: #F44336;
-            --text: #ffffff;
-            --radius: 15px;
+            --bg-dark: #0f111a;
+            --apple-red: #ff3b30;
+            --snake-green: #34c759;
+            --grid-line: #1c2033;
         }
 
         body {
-            margin: 0; background: var(--bg); color: var(--text);
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 0; background-color: var(--bg-dark);
+            color: white; font-family: -apple-system, sans-serif;
             display: flex; flex-direction: column; align-items: center;
             height: 100vh; overflow: hidden; touch-action: none;
         }
 
-        .stats-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 25px; background: var(--card);
-            margin: 15px; border-radius: var(--radius);
-            width: 85%; max-width: 400px;
+        .header { margin-top: 30px; text-align: center; }
+        #score-val { font-size: 3rem; font-weight: 800; margin: 10px 0; }
+
+        /* Game Board */
+        #game-container {
+            position: relative;
+            width: 90vw; max-width: 380px; aspect-ratio: 1;
+            background: #141724; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: grid; grid-template-columns: repeat(20, 1fr);
+            grid-template-rows: repeat(20, 1fr);
+            padding: 8px; gap: 2px;
         }
 
-        .stats-bar a { color: var(--accent); text-decoration: none; font-weight: bold; }
-        #score-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .cell { border-radius: 4px; }
 
-        canvas {
-            background: #000;
-            border: 2px solid #333;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            max-width: 90vw;
-            max-height: 40vh;
+        /* Apple Aesthetic Blocks */
+        .snake-node {
+            background-color: var(--snake-green);
+            border-radius: 6px; /* Rounded Apple-style */
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
+            z-index: 2;
         }
 
-        /* Mobile Controls */
+        .food {
+            background-color: var(--apple-red);
+            border-radius: 50%; /* Make the food look like a round apple */
+            box-shadow: 0 0 10px var(--apple-red), inset 0 2px 4px rgba(255,255,255,0.5);
+            transform: scale(0.8);
+            z-index: 1;
+        }
+
+        /* Controls for Mobile */
         .controls {
-            margin-top: 20px;
-            display: grid;
-            grid-template-areas: 
-                ". up ."
-                "left down right";
-            gap: 10px;
+            margin-top: 30px; display: grid;
+            grid-template-areas: ". up ." "left down right";
+            gap: 15px;
         }
 
         .btn {
-            width: 70px; height: 70px;
-            background: var(--card);
-            border-radius: 50%;
-            display: flex; justify-content: center; align-items: center;
-            font-size: 1.5rem; color: white;
-            user-select: none; cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 60px; height: 60px; background: #24283b;
+            border-radius: 15px; display: flex; align-items: center;
+            justify-content: center; font-size: 24px; color: white;
+            user-select: none; active: scale(0.9);
         }
 
-        .btn:active { transform: scale(0.9); background: #333; }
-        .up { grid-area: up; }
-        .down { grid-area: down; }
-        .left { grid-area: left; }
-        .right { grid-area: right; }
+        .exit-btn { position: absolute; top: 20px; left: 20px; color: #555; text-decoration: none; font-size: 20px; }
     </style>
 </head>
 <body>
 
-    <div class="stats-bar">
-        <div>Score: <span id="score-val">0</span></div>
-        <a href="../index.html">← EXIT</a>
+    <a href="../index.html" class="exit-btn">✕</a>
+    <div class="header">
+        <div id="score-val">1</div>
     </div>
 
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="game-container"></div>
 
     <div class="controls">
-        <div class="btn up" onclick="changeDir('UP')">▲</div>
-        <div class="btn left" onclick="changeDir('LEFT')">◀</div>
-        <div class="btn down" onclick="changeDir('DOWN')">▼</div>
-        <div class="btn right" onclick="changeDir('RIGHT')">▶</div>
+        <div class="btn" style="grid-area: up" onclick="setDir('UP')">▲</div>
+        <div class="btn" style="grid-area: left" onclick="setDir('LEFT')">◀</div>
+        <div class="btn" style="grid-area: down" onclick="setDir('DOWN')">▼</div>
+        <div class="btn" style="grid-area: right" onclick="setDir('RIGHT')">▶</div>
     </div>
 
-    <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score-val");
+<script>
+    const GRID_SIZE = 20;
+    const container = document.getElementById('game-container');
+    
+    // Game State
+    let snake = [{x: 10, y: 10}]; // Starts as exactly ONE block
+    let food = {x: 15, y: 15};
+    let dir = 'RIGHT';
+    let nextDir = 'RIGHT';
+    let score = 1;
+    let gameSpeed = 150; // Slower speed (higher number = slower)
 
-        const box = 20;
-        let score = 0;
-        let gameSpeed = 100;
-        let snake = [{ x: 9 * box, y: 10 * box }];
-        let food = {
-            x: Math.floor(Math.random() * 19 + 1) * box,
-            y: Math.floor(Math.random() * 19 + 1) * box
-        };
-        let d = "RIGHT";
-        let game;
+    function init() {
+        container.innerHTML = '';
+        for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+            const div = document.createElement('div');
+            div.className = 'cell';
+            container.appendChild(div);
+        }
+        gameLoop();
+    }
 
-        // Key Listeners
-        document.addEventListener("keydown", (e) => {
-            if (e.keyCode == 37 && d != "RIGHT") d = "LEFT";
-            else if (e.keyCode == 38 && d != "DOWN") d = "UP";
-            else if (e.keyCode == 39 && d != "LEFT") d = "RIGHT";
-            else if (e.keyCode == 40 && d != "UP") d = "DOWN";
+    function setDir(newDir) {
+        if (newDir === 'UP' && dir !== 'DOWN') nextDir = 'UP';
+        if (newDir === 'DOWN' && dir !== 'UP') nextDir = 'DOWN';
+        if (newDir === 'LEFT' && dir !== 'RIGHT') nextDir = 'LEFT';
+        if (newDir === 'RIGHT' && dir !== 'LEFT') nextDir = 'RIGHT';
+    }
+
+    // Keyboard support
+    window.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp') setDir('UP');
+        if (e.key === 'ArrowDown') setDir('DOWN');
+        if (e.key === 'ArrowLeft') setDir('LEFT');
+        if (e.key === 'ArrowRight') setDir('RIGHT');
+    });
+
+    function update() {
+        dir = nextDir;
+        const head = { ...snake[0] };
+
+        if (dir === 'UP') head.y--;
+        if (dir === 'DOWN') head.y++;
+        if (dir === 'LEFT') head.x--;
+        if (dir === 'RIGHT') head.x++;
+
+        // Game Over: Wall hit or self hit
+        if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE || 
+            snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+            alert("Game Over! Score: " + score);
+            snake = [{x: 10, y: 10}];
+            score = 1;
+            dir = 'RIGHT';
+            nextDir = 'RIGHT';
+            return;
+        }
+
+        snake.unshift(head);
+
+        // Check if food eaten
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            food = {
+                x: Math.floor(Math.random() * GRID_SIZE),
+                y: Math.floor(Math.random() * GRID_SIZE)
+            };
+        } else {
+            snake.pop();
+        }
+    }
+
+    function draw() {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(c => c.className = 'cell'); // Reset board
+
+        // Draw Food (The Apple)
+        const foodIdx = food.y * GRID_SIZE + food.x;
+        cells[foodIdx].classList.add('food');
+
+        // Draw Snake
+        snake.forEach(seg => {
+            const idx = seg.y * GRID_SIZE + seg.x;
+            if (cells[idx]) cells[idx].classList.add('snake-node');
         });
 
-        function changeDir(newDir) {
-            if (newDir == "LEFT" && d != "RIGHT") d = "LEFT";
-            if (newDir == "UP" && d != "DOWN") d = "UP";
-            if (newDir == "RIGHT" && d != "LEFT") d = "RIGHT";
-            if (newDir == "DOWN" && d != "UP") d = "DOWN";
-        }
+        document.getElementById('score-val').innerText = score;
+    }
 
-        function collision(head, array) {
-            for (let i = 0; i < array.length; i++) {
-                if (head.x == array[i].x && head.y == array[i].y) return true;
-            }
-            return false;
-        }
+    function gameLoop() {
+        update();
+        draw();
+        setTimeout(gameLoop, gameSpeed);
+    }
 
-        function draw() {
-            ctx.fillStyle = "black";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Snake
-            for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = (i == 0) ? "#2196F3" : "#1976D2";
-                ctx.strokeStyle = "black";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
-                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
-            }
-
-            // Draw Food
-            ctx.fillStyle = "#F44336";
-            ctx.beginPath();
-            ctx.arc(food.x + box/2, food.y + box/2, box/2.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-
-            if (d == "LEFT") snakeX -= box;
-            if (d == "UP") snakeY -= box;
-            if (d == "RIGHT") snakeX += box;
-            if (d == "DOWN") snakeY += box;
-
-            // Eat Food
-            if (snakeX == food.x && snakeY == food.y) {
-                score++;
-                scoreEl.innerText = score;
-                food = {
-                    x: Math.floor(Math.random() * 19 + 1) * box,
-                    y: Math.floor(Math.random() * 19 + 1) * box
-                };
-            } else {
-                snake.pop();
-            }
-
-            let newHead = { x: snakeX, y: snakeY };
-
-            // Game Over Rules
-            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
-                clearInterval(game);
-                alert("GAME OVER! Final Score: " + score);
-                location.reload();
-            }
-
-            snake.unshift(newHead);
-        }
-
-        game = setInterval(draw, gameSpeed);
-    </script>
+    init();
+</script>
 </body>
 </html>
