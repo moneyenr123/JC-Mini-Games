@@ -9,7 +9,8 @@
             --bg-dark: #0f111a;
             --apple-red: #ff3b30;
             --snake-green: #34c759;
-            --grid-line: #1c2033;
+            --snake-dark: #28a745;
+            --grid-line: rgba(255, 255, 255, 0.03);
         }
 
         body {
@@ -19,53 +20,73 @@
             height: 100vh; overflow: hidden; touch-action: none;
         }
 
-        .header { margin-top: 30px; text-align: center; }
-        #score-val { font-size: 3rem; font-weight: 800; margin: 10px 0; }
+        .header { margin-top: 20px; text-align: center; }
+        #score-val { font-size: 3rem; font-weight: 800; margin: 5px 0; color: white; }
 
-        /* Game Board */
+        /* Game Board with Grid */
         #game-container {
             position: relative;
             width: 90vw; max-width: 380px; aspect-ratio: 1;
-            background: #141724; border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-color: #141724;
+            /* Realistic Grid Background */
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 5% 5%; /* Matches 20x20 grid */
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
             display: grid; grid-template-columns: repeat(20, 1fr);
             grid-template-rows: repeat(20, 1fr);
-            padding: 8px; gap: 2px;
+            padding: 5px; box-sizing: border-box;
         }
 
-        .cell { border-radius: 4px; }
+        .cell { position: relative; width: 100%; height: 100%; }
 
-        /* Apple Aesthetic Blocks */
-        .snake-node {
-            background-color: var(--snake-green);
-            border-radius: 6px; /* Rounded Apple-style */
-            box-shadow: inset 0 2px 4px rgba(255,255,255,0.3);
-            z-index: 2;
+        /* Realistic Snake Head */
+        .snake-head {
+            background: linear-gradient(135deg, var(--snake-green), var(--snake-dark));
+            border-radius: 8px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+        /* Eyes for the head */
+        .snake-head::after, .snake-head::before {
+            content: ""; position: absolute; width: 4px; height: 4px;
+            background: white; border-radius: 50%; top: 20%;
+        }
+        .snake-head::after { right: 20%; }
+        .snake-head::before { left: 20%; }
+
+        /* Realistic Snake Body */
+        .snake-body {
+            background: linear-gradient(135deg, var(--snake-dark), #1e7e34);
+            border-radius: 6px;
+            transform: scale(0.9); /* Makes joints look smoother */
         }
 
+        /* Realistic Apple */
         .food {
-            background-color: var(--apple-red);
-            border-radius: 50%; /* Make the food look like a round apple */
-            box-shadow: 0 0 10px var(--apple-red), inset 0 2px 4px rgba(255,255,255,0.5);
-            transform: scale(0.8);
-            z-index: 1;
+            background: radial-gradient(circle at 30% 30%, #ff5e57, var(--apple-red));
+            border-radius: 50%;
+            transform: scale(0.85);
+            box-shadow: 0 4px 10px rgba(255, 59, 48, 0.4);
+        }
+        /* Small leaf on apple */
+        .food::before {
+            content: ""; position: absolute; top: -2px; left: 50%;
+            width: 4px; height: 6px; background: #34c759;
+            border-radius: 2px 5px 2px 5px; transform: rotate(15deg);
         }
 
-        /* Controls for Mobile */
-        .controls {
-            margin-top: 30px; display: grid;
-            grid-template-areas: ". up ." "left down right";
-            gap: 15px;
-        }
-
+        .controls { margin-top: 25px; display: grid; grid-template-areas: ". up ." "left down right"; gap: 12px; }
         .btn {
-            width: 60px; height: 60px; background: #24283b;
-            border-radius: 15px; display: flex; align-items: center;
-            justify-content: center; font-size: 24px; color: white;
-            user-select: none; active: scale(0.9);
+            width: 65px; height: 65px; background: #1c1f2e;
+            border-radius: 20px; display: flex; align-items: center;
+            justify-content: center; font-size: 24px; box-shadow: 0 4px 0 #000;
         }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #000; }
 
-        .exit-btn { position: absolute; top: 20px; left: 20px; color: #555; text-decoration: none; font-size: 20px; }
+        .exit-btn { position: absolute; top: 20px; left: 20px; color: #444; text-decoration: none; font-size: 24px; }
     </style>
 </head>
 <body>
@@ -88,13 +109,12 @@
     const GRID_SIZE = 20;
     const container = document.getElementById('game-container');
     
-    // Game State
-    let snake = [{x: 10, y: 10}]; // Starts as exactly ONE block
+    let snake = [{x: 10, y: 10}];
     let food = {x: 15, y: 15};
     let dir = 'RIGHT';
     let nextDir = 'RIGHT';
     let score = 1;
-    let gameSpeed = 150; // Slower speed (higher number = slower)
+    const gameSpeed = 160; // Slower for realism
 
     function init() {
         container.innerHTML = '';
@@ -106,67 +126,62 @@
         gameLoop();
     }
 
-    function setDir(newDir) {
-        if (newDir === 'UP' && dir !== 'DOWN') nextDir = 'UP';
-        if (newDir === 'DOWN' && dir !== 'UP') nextDir = 'DOWN';
-        if (newDir === 'LEFT' && dir !== 'RIGHT') nextDir = 'LEFT';
-        if (newDir === 'RIGHT' && dir !== 'LEFT') nextDir = 'RIGHT';
+    function setDir(d) {
+        if (d === 'UP' && dir !== 'DOWN') nextDir = 'UP';
+        if (d === 'DOWN' && dir !== 'UP') nextDir = 'DOWN';
+        if (d === 'LEFT' && dir !== 'RIGHT') nextDir = 'LEFT';
+        if (d === 'RIGHT' && dir !== 'LEFT') nextDir = 'RIGHT';
     }
-
-    // Keyboard support
-    window.addEventListener('keydown', e => {
-        if (e.key === 'ArrowUp') setDir('UP');
-        if (e.key === 'ArrowDown') setDir('DOWN');
-        if (e.key === 'ArrowLeft') setDir('LEFT');
-        if (e.key === 'ArrowRight') setDir('RIGHT');
-    });
 
     function update() {
         dir = nextDir;
         const head = { ...snake[0] };
-
         if (dir === 'UP') head.y--;
         if (dir === 'DOWN') head.y++;
         if (dir === 'LEFT') head.x--;
         if (dir === 'RIGHT') head.x++;
 
-        // Game Over: Wall hit or self hit
         if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE || 
             snake.some(seg => seg.x === head.x && seg.y === head.y)) {
             alert("Game Over! Score: " + score);
             snake = [{x: 10, y: 10}];
-            score = 1;
-            dir = 'RIGHT';
-            nextDir = 'RIGHT';
+            score = 1; dir = 'RIGHT'; nextDir = 'RIGHT';
             return;
         }
 
         snake.unshift(head);
-
-        // Check if food eaten
         if (head.x === food.x && head.y === food.y) {
             score++;
-            food = {
-                x: Math.floor(Math.random() * GRID_SIZE),
-                y: Math.floor(Math.random() * GRID_SIZE)
-            };
+            spawnFood();
         } else {
             snake.pop();
         }
     }
 
+    function spawnFood() {
+        food = {
+            x: Math.floor(Math.random() * GRID_SIZE),
+            y: Math.floor(Math.random() * GRID_SIZE)
+        };
+        // Don't spawn food on snake
+        if (snake.some(s => s.x === food.x && s.y === food.y)) spawnFood();
+    }
+
     function draw() {
         const cells = document.querySelectorAll('.cell');
-        cells.forEach(c => c.className = 'cell'); // Reset board
+        cells.forEach(c => c.className = 'cell');
 
-        // Draw Food (The Apple)
-        const foodIdx = food.y * GRID_SIZE + food.x;
-        cells[foodIdx].classList.add('food');
+        // Draw Apple
+        cells[food.y * GRID_SIZE + food.x].classList.add('food');
 
         // Draw Snake
-        snake.forEach(seg => {
+        snake.forEach((seg, i) => {
             const idx = seg.y * GRID_SIZE + seg.x;
-            if (cells[idx]) cells[idx].classList.add('snake-node');
+            if (i === 0) {
+                cells[idx].classList.add('snake-head');
+            } else {
+                cells[idx].classList.add('snake-body');
+            }
         });
 
         document.getElementById('score-val').innerText = score;
