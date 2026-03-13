@@ -12,80 +12,58 @@
             --bg-dark: #0f111a;
             --cell-bg: #1a1e2e;
             --text-title: #ff8a80;
-            
-            /* Apple-style Glossy Palette */
-            --b-magenta: #d633ff;
-            --b-red: #ff3b30;
-            --b-yellow: #ffcc00;
-            --b-blue: #007aff;
-            --b-green: #34c759;
+            --b-magenta: #d633ff; --b-red: #ff3b30; --b-yellow: #ffcc00; --b-blue: #007aff; --b-green: #34c759;
         }
 
         body {
             margin: 0; padding: 0; background-color: var(--bg-dark);
-            color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: white; font-family: -apple-system, sans-serif;
             display: flex; flex-direction: column; align-items: center;
             height: 100vh; overflow: hidden; touch-action: none;
         }
 
-        .title { color: var(--text-title); font-size: 1.4rem; font-weight: 700; margin-top: 20px; letter-spacing: -0.5px; }
+        .title { color: var(--text-title); font-size: 1.4rem; font-weight: 700; margin-top: 20px; }
         #score-val { font-size: 3.5rem; font-weight: 800; margin: 5px 0 15px 0; }
 
-        /* 8x8 Grid */
         .grid {
             display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
             width: 90vw; max-width: 380px; aspect-ratio: 1;
-            padding: 6px; background: #141724; border-radius: 18px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            padding: 8px; background: #141724; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .cell {
             background-color: var(--cell-bg);
-            border-radius: 6px; position: relative;
-            transition: background 0.1s;
+            border-radius: 10px; position: relative;
+            transition: background 0.05s ease;
         }
 
-        /* Apple Style 3D Block */
+        /* Apple High-Radius 3D Blocks */
         .block {
-            border-radius: 12px !important; /* High rounding like Apple menus */
+            border-radius: 12px !important;
             box-shadow: 
-                inset 0 3px 6px rgba(255,255,255,0.4), /* Top gloss */
-                inset 0 -3px 6px rgba(0,0,0,0.3),       /* Bottom depth */
-                0 2px 4px rgba(0,0,0,0.3);              /* Outer shadow */
-            position: relative;
+                inset 0 3px 6px rgba(255,255,255,0.4),
+                inset 0 -3px 6px rgba(0,0,0,0.3),
+                0 3px 6px rgba(0,0,0,0.4);
         }
 
-        /* Preview State (Fix for the "All Yellow" bug) */
-        .cell.preview-ghost {
-            opacity: 0.4;
-            box-shadow: none !important;
-        }
+        .ghost { opacity: 0.35; box-shadow: none !important; }
 
-        /* Tray */
-        .tray {
-            margin-top: 30px; display: flex; justify-content: space-around;
-            width: 100%; max-width: 400px; height: 100px;
-        }
-
-        .piece-container {
-            display: grid; gap: 3px; cursor: grab;
-            transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1);
-        }
+        .tray { margin-top: 30px; display: flex; justify-content: space-around; width: 100%; max-width: 400px; }
+        .piece-container { display: grid; gap: 3px; cursor: grab; }
 
         .dragging {
-            position: fixed; pointer-events: none; z-index: 100;
-            transform: scale(1.15) translateY(-60px) !important; 
-            opacity: 0.9;
+            position: fixed; pointer-events: none; z-index: 9999;
+            transform: scale(1.2) translateY(-70px) !important;
         }
 
-        /* Colors */
         .c-magenta { background-color: var(--b-magenta); }
         .c-red { background-color: var(--b-red); }
         .c-yellow { background-color: var(--b-yellow); }
         .c-blue { background-color: var(--b-blue); }
         .c-green { background-color: var(--b-green); }
 
-        .exit-btn { position: absolute; top: 20px; left: 20px; color: #555; text-decoration: none; font-weight: 600; }
+        .exit-btn { position: absolute; top: 20px; left: 20px; color: #555; text-decoration: none; font-size: 20px; }
     </style>
 </head>
 <body>
@@ -93,166 +71,155 @@
     <a href="../index.html" class="exit-btn">✕</a>
     <div class="title">Block Rumble</div>
     <div id="score-val">0</div>
-
     <div class="grid" id="main-grid"></div>
-
     <div class="tray" id="tray">
         <div class="piece-container" id="p0" onmousedown="startDrag(event, 0)" ontouchstart="startDrag(event, 0)"></div>
         <div class="piece-container" id="p1" onmousedown="startDrag(event, 1)" ontouchstart="startDrag(event, 1)"></div>
         <div class="piece-container" id="p2" onmousedown="startDrag(event, 2)" ontouchstart="startDrag(event, 2)"></div>
     </div>
 
-    <script>
-        const GRID_SIZE = 8;
-        let score = 0;
-        let board = Array(64).fill(null); 
-        let trayPieces = [null, null, null];
-        
-        const SHAPES = [
-            { s: [[0,0], [0,1], [1,0], [1,1]], c: "c-red" },
-            { s: [[0,0], [0,1], [0,2]], c: "c-blue" },
-            { s: [[0,0], [1,0], [2,0]], c: "c-yellow" },
-            { s: [[0,1], [1,0], [1,1], [1,2]], c: "c-magenta" },
-            { s: [[0,0]], c: "c-green" }
-        ];
+<script>
+    const GRID_SIZE = 8;
+    let score = 0;
+    let boardState = Array(64).fill(null); // The actual saved board
+    let previewState = Array(64).fill(null); // Temporary overlay
+    let trayPieces = [null, null, null];
+    let activeIdx = -1;
+    let dragEl = null;
 
-        function init() {
-            const gridEl = document.getElementById('main-grid');
-            gridEl.innerHTML = '';
-            for (let i = 0; i < 64; i++) {
-                let cell = document.createElement('div');
-                cell.className = 'cell';
-                gridEl.appendChild(cell);
-            }
-            refreshTray();
-            draw();
+    const SHAPES = [
+        { s: [[0,0], [0,1], [1,0], [1,1]], c: "c-red" },
+        { s: [[0,0], [0,1], [0,2]], c: "c-blue" },
+        { s: [[0,0], [1,0], [2,0]], c: "c-yellow" },
+        { s: [[0,1], [1,0], [1,1], [1,2]], c: "c-magenta" },
+        { s: [[0,0]], c: "c-green" }
+    ];
+
+    function init() {
+        const grid = document.getElementById('main-grid');
+        grid.innerHTML = '';
+        for (let i = 0; i < 64; i++) {
+            const div = document.createElement('div');
+            div.className = 'cell';
+            grid.appendChild(div);
         }
+        refreshTray();
+        render();
+    }
 
-        function refreshTray() {
-            for (let i = 0; i < 3; i++) {
-                trayPieces[i] = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-                renderPiece(i);
-            }
-        }
-
-        function renderPiece(idx) {
-            const el = document.getElementById(`p${idx}`);
-            if (!trayPieces[idx]) { el.innerHTML = ''; return; }
-            const {s, c} = trayPieces[idx];
+    function refreshTray() {
+        for (let i = 0; i < 3; i++) {
+            trayPieces[i] = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            const el = document.getElementById(`p${i}`);
+            el.innerHTML = '';
+            el.style.visibility = 'visible';
+            const {s, c} = trayPieces[i];
             const rows = Math.max(...s.map(p => p[0])) + 1;
             const cols = Math.max(...s.map(p => p[1])) + 1;
             el.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
             el.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-            el.innerHTML = '';
-            for (let r = 0; r < rows; r++) {
-                for (let c_ = 0; c_ < cols; c_++) {
-                    let b = document.createElement('div');
-                    if (s.some(p => p[0] === r && p[1] === c_)) b.className = `block ${c}`;
-                    b.style.width = '20px'; b.style.height = '20px';
-                    el.appendChild(b);
-                }
-            }
-        }
-
-        let activeIdx = -1;
-        let dragEl = null;
-
-        function startDrag(e, idx) {
-            if (!trayPieces[idx]) return;
-            activeIdx = idx;
-            dragEl = e.currentTarget.cloneNode(true);
-            dragEl.classList.add('dragging');
-            document.body.appendChild(dragEl);
-            moveDrag(e);
-        }
-
-        function moveDrag(e) {
-            if (!dragEl) return;
-            const touch = e.touches ? e.touches[0] : e;
-            dragEl.style.left = touch.clientX - dragEl.offsetWidth / 2 + 'px';
-            dragEl.style.top = touch.clientY - dragEl.offsetHeight / 2 + 'px';
-            updatePreview(touch.clientX, touch.clientY);
-        }
-
-        function updatePreview(x, y) {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(c => c.className = 'cell'); // Reset
-            draw(); // Re-draw existing blocks
-
-            const grid = document.getElementById('main-grid');
-            const rect = grid.getBoundingClientRect();
-            const col = Math.floor((x - rect.left) / (rect.width / 8));
-            const row = Math.floor((y - rect.top - 60) / (rect.height / 8)); // Offset for lift
-
-            if (row >= 0 && row < 8 && col >= 0 && col < 8) {
-                const {s, c} = trayPieces[activeIdx];
-                let canPlace = s.every(p => {
-                    let nr = row + p[0], nc = col + p[1];
-                    return nr < 8 && nc < 8 && !board[nr * 8 + nc];
-                });
-
-                if (canPlace) {
-                    s.forEach(p => {
-                        let cell = cells[(row + p[0]) * 8 + (col + p[1])];
-                        cell.classList.add('block', c, 'preview-ghost');
-                    });
-                }
-            }
-        }
-
-        function endDrag(e) {
-            if (!dragEl) return;
-            const touch = e.changedTouches ? e.changedTouches[0] : e;
-            const grid = document.getElementById('main-grid');
-            const rect = grid.getBoundingClientRect();
-            const col = Math.floor((touch.clientX - rect.left) / (rect.width / 8));
-            const row = Math.floor((touch.clientY - rect.top - 60) / (rect.height / 8));
-
-            if (row >= 0 && row < 8 && col >= 0 && col < 8) {
-                const {s, c} = trayPieces[activeIdx];
-                if (s.every(p => (row+p[0]) < 8 && (col+p[1]) < 8 && !board[(row+p[0])*8 + (col+p[1])])) {
-                    s.forEach(p => board[(row+p[0])*8 + (col+p[1])] = c);
-                    trayPieces[activeIdx] = null;
-                    score += s.length;
-                    checkClears();
-                }
-            }
-
-            document.body.removeChild(dragEl);
-            dragEl = null;
-            if (trayPieces.every(p => p === null)) refreshTray();
-            renderPiece(activeIdx);
-            draw();
-        }
-
-        function checkClears() {
-            let toClear = new Set();
-            for (let i = 0; i < 8; i++) {
-                // Rows
-                let row = Array.from({length: 8}, (_, k) => i * 8 + k);
-                if (row.every(idx => board[idx])) row.forEach(idx => toClear.add(idx));
-                // Cols
-                let col = Array.from({length: 8}, (_, k) => k * 8 + i);
-                if (col.every(idx => board[idx])) col.forEach(idx => toClear.add(idx));
-            }
-            toClear.forEach(idx => board[idx] = null);
-            if (toClear.size > 0) score += toClear.size * 2;
-        }
-
-        function draw() {
-            document.getElementById('score-val').innerText = score;
-            const cells = document.querySelectorAll('.cell');
-            board.forEach((color, i) => {
-                if (color) cells[i].className = `cell block ${color}`;
+            s.forEach(p => {
+                const b = document.createElement('div');
+                b.className = `block ${c}`;
+                b.style.gridRowStart = p[0] + 1;
+                b.style.gridColumnStart = p[1] + 1;
+                b.style.width = '22px'; b.style.height = '22px';
+                el.appendChild(b);
             });
         }
+    }
 
-        window.addEventListener('mousemove', moveDrag);
-        window.addEventListener('mouseup', endDrag);
-        window.addEventListener('touchmove', e => { e.preventDefault(); moveDrag(e); }, {passive: false});
-        window.addEventListener('touchend', endDrag);
+    function render() {
+        document.getElementById('score-val').innerText = score;
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, i) => {
+            cell.className = 'cell'; // Reset everything
+            if (boardState[i]) {
+                cell.classList.add('block', boardState[i]);
+            } else if (previewState[i]) {
+                cell.classList.add('block', previewState[i], 'ghost');
+            }
+        });
+    }
 
-        init();
-    </script>
+    function startDrag(e, idx) {
+        if (!trayPieces[idx]) return;
+        activeIdx = idx;
+        dragEl = e.currentTarget.cloneNode(true);
+        dragEl.classList.add('dragging');
+        document.body.appendChild(dragEl);
+        handleMove(e);
+    }
+
+    function handleMove(e) {
+        if (!dragEl) return;
+        const touch = e.touches ? e.touches[0] : e;
+        dragEl.style.left = touch.clientX - dragEl.offsetWidth / 2 + 'px';
+        dragEl.style.top = touch.clientY - dragEl.offsetHeight / 2 + 'px';
+
+        const grid = document.getElementById('main-grid');
+        const rect = grid.getBoundingClientRect();
+        const col = Math.floor((touch.clientX - rect.left) / (rect.width / 8));
+        const row = Math.floor((touch.clientY - rect.top - 70) / (rect.height / 8));
+
+        previewState.fill(null); // Clear preview virtual layer
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            const {s, c} = trayPieces[activeIdx];
+            if (s.every(p => {
+                const nr = row + p[0], nc = col + p[1];
+                return nr < 8 && nc < 8 && !boardState[nr * 8 + nc];
+            })) {
+                s.forEach(p => previewState[(row + p[0]) * 8 + (col + p[1])] = c);
+            }
+        }
+        render(); // Redraw combined layers
+    }
+
+    function handleEnd(e) {
+        if (!dragEl) return;
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
+        const grid = document.getElementById('main-grid');
+        const rect = grid.getBoundingClientRect();
+        const col = Math.floor((touch.clientX - rect.left) / (rect.width / 8));
+        const row = Math.floor((touch.clientY - rect.top - 70) / (rect.height / 8));
+
+        if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+            const {s, c} = trayPieces[activeIdx];
+            if (s.every(p => {
+                const nr = row + p[0], nc = col + p[1];
+                return nr < 8 && nc < 8 && !boardState[nr * 8 + nc];
+            })) {
+                s.forEach(p => boardState[(row + p[0]) * 8 + (col + p[1])] = c);
+                document.getElementById(`p${activeIdx}`).style.visibility = 'hidden';
+                trayPieces[activeIdx] = null;
+                score += s.length;
+                checkMatches();
+            }
+        }
+
+        document.body.removeChild(dragEl);
+        dragEl = null;
+        previewState.fill(null);
+        if (trayPieces.every(p => p === null)) refreshTray();
+        render();
+    }
+
+    function checkMatches() {
+        let rows = [], cols = [];
+        for (let i = 0; i < 8; i++) {
+            if (Array.from({length:8},(_,k)=>boardState[i*8+k]).every(x=>x)) rows.push(i);
+            if (Array.from({length:8},(_,k)=>boardState[k*8+i]).every(x=>x)) cols.push(i);
+        }
+        rows.forEach(r => { for(let c=0; c<8; c++) boardState[r*8+c] = null; });
+        cols.forEach(c => { for(let r=0; r<8; r++) boardState[r*8+c] = null; });
+        if (rows.length || cols.length) score += (rows.length + cols.length) * 10;
+    }
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', e => { e.preventDefault(); handleMove(e); }, {passive: false});
+    window.addEventListener('touchend', handleEnd);
+    init();
+</script>
 </body>
 </html>
