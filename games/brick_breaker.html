@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brick Breaker - JC Mini Games</title>
+    <style>
+        :root { --bg: #121212; --card: #1e1e1e; --accent: #2196F3; --text: #ffffff; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; overflow: hidden; touch-action: none; }
+        .stats-bar { display: flex; justify-content: space-between; padding: 15px; background: var(--card); margin: 10px; border-radius: 12px; width: 85%; max-width: 400px; }
+        canvas { background: #000; border-radius: 8px; max-width: 95vw; }
+        .controls { margin-top: 20px; color: #888; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="stats-bar">
+        <div>Score: <span id="score">0</span></div>
+        <a href="../index.html" style="color:var(--accent); text-decoration:none;">← EXIT</a>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="controls">Drag to move paddle</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 360; canvas.height = 480;
+
+        let score = 0;
+        const paddleH = 10, paddleW = 75;
+        let paddleX = (canvas.width - paddleW) / 2;
+        let x = canvas.width / 2, y = canvas.height - 30;
+        let dx = 3, dy = -3;
+        const ballRadius = 8;
+
+        const rowCount = 5, colCount = 4, brickW = 75, brickH = 20, padding = 10, offsetTop = 30, offsetLeft = 15;
+        let bricks = [];
+        for(let c=0; c<colCount; c++) {
+            bricks[c] = [];
+            for(let r=0; r<rowCount; r++) { bricks[c][r] = { x: 0, y: 0, status: 1 }; }
+        }
+
+        document.addEventListener("mousemove", (e) => {
+            let relativeX = e.clientX - canvas.offsetLeft;
+            if(relativeX > 0 && relativeX < canvas.width) paddleX = relativeX - paddleW/2;
+        });
+        document.addEventListener("touchmove", (e) => {
+            let relativeX = e.touches[0].clientX - canvas.offsetLeft;
+            if(relativeX > 0 && relativeX < canvas.width) paddleX = relativeX - paddleW/2;
+        });
+
+        function drawBricks() {
+            for(let c=0; c<colCount; c++) {
+                for(let r=0; r<rowCount; r++) {
+                    if(bricks[c][r].status === 1) {
+                        let bX = (c*(brickW+padding))+offsetLeft;
+                        let bY = (r*(brickH+padding))+offsetTop;
+                        bricks[c][r].x = bX; bricks[c][r].y = bY;
+                        ctx.fillStyle = varColor(r);
+                        ctx.fillRect(bX, bY, brickW, brickH);
+                    }
+                }
+            }
+        }
+
+        function varColor(r) { return ["#F44336", "#FF9800", "#FFEB3B", "#4CAF50", "#2196F3"][r]; }
+
+        function collision() {
+            for(let c=0; c<colCount; c++) {
+                for(let r=0; r<rowCount; r++) {
+                    let b = bricks[c][r];
+                    if(b.status === 1) {
+                        if(x > b.x && x < b.x+brickW && y > b.y && y < b.y+brickH) {
+                            dy = -dy; b.status = 0; score++;
+                            document.getElementById("score").innerText = score;
+                        }
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBricks();
+            ctx.beginPath(); ctx.arc(x, y, ballRadius, 0, Math.PI*2); ctx.fillStyle = "#FFF"; ctx.fill(); ctx.closePath();
+            ctx.fillStyle = varColor(4); ctx.fillRect(paddleX, canvas.height-paddleH, paddleW, paddleH);
+            collision();
+
+            if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) dx = -dx;
+            if(y + dy < ballRadius) dy = -dy;
+            else if(y + dy > canvas.height-ballRadius) {
+                if(x > paddleX && x < paddleX + paddleW) dy = -dy;
+                else { alert("GAME OVER"); document.location.reload(); }
+            }
+            x += dx; y += dy; requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
