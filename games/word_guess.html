@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Guess - JC Mini Games</title>
+    <style>
+        :root { --bg: #121212; --card: #1e1e1e; --accent: #2196F3; --text: #ffffff; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .word-display { font-size: 2.5rem; letter-spacing: 10px; margin: 40px 0; font-weight: bold; color: var(--accent); }
+        .keyboard { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; max-width: 400px; }
+        .key { background: var(--card); border: 1px solid #333; padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; }
+        .key.used { opacity: 0.3; pointer-events: none; }
+        .stat { font-size: 1.2rem; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="stat">Lives: <span id="lives" style="color:#F44336">6</span></div>
+    <div class="word-display" id="word">_ _ _ _</div>
+    <div class="keyboard" id="keyboard"></div>
+    <script>
+        const words = ["KOTLIN", "ANDROID", "GOOGLE", "MOBILE", "STUDIO", "CANVAS", "LAYOUT"];
+        let selectedWord = words[Math.floor(Math.random() * words.length)];
+        let guessed = [];
+        let lives = 6;
+
+        function updateDisplay() {
+            const display = selectedWord.split('').map(letter => guessed.includes(letter) ? letter : "_").join(" ");
+            document.getElementById("word").innerText = display;
+            if(!display.includes("_")) { alert("YOU WIN!"); reset(); }
+            if(lives <= 0) { alert("GAME OVER! Word was: " + selectedWord); reset(); }
+        }
+
+        function reset() { location.reload(); }
+
+        const kb = document.getElementById("keyboard");
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => {
+            const btn = document.createElement("div");
+            btn.className = "key"; btn.innerText = l;
+            btn.onclick = () => {
+                btn.classList.add("used");
+                if(selectedWord.includes(l)) guessed.push(l);
+                else { lives--; document.getElementById("lives").innerText = lives; }
+                updateDisplay();
+            };
+            kb.appendChild(btn);
+        });
+        updateDisplay();
+    </script>
+</body>
+</html>
