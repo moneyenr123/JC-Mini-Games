@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Rumble - JC Mini Games</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --accent: #2196F3;
+            --text: #ffffff;
+            --grid-bg: #252525;
+            --radius: 15px;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            overflow: hidden; touch-action: none;
+        }
+
+        .stats-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 25px; background: var(--card);
+            margin: 15px; border-radius: var(--radius);
+            width: 85%; max-width: 400px;
+        }
+
+        .stats-bar a { color: var(--accent); text-decoration: none; font-weight: bold; }
+
+        #score-val { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+
+        /* 8x8 Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            width: 90vw; max-width: 380px;
+            aspect-ratio: 1;
+            background: #333;
+            padding: 6px; border-radius: 12px;
+        }
+
+        .cell {
+            background: var(--grid-bg);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .cell.filled { background: var(--accent); box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+
+        /* Block Tray */
+        .tray {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-around;
+            width: 100%; max-width: 400px;
+            height: 120px;
+        }
+
+        .piece-container {
+            width: 100px; height: 100px;
+            display: grid;
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+
+        .piece-cell { border-radius: 2px; }
+        .piece-cell.active { background: var(--accent); border: 1px solid rgba(255,255,255,0.2); }
+
+        /* Dragging State */
+        .dragging {
+            opacity: 0.8;
+            transform: scale(1.1);
+            position: absolute;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stats-bar">
+        <div>Score: <span id="score-val">0</span></div>
+        <a href="../index.html">← EXIT</a>
+    </div>
+
+    <div class="grid" id="main-grid"></div>
+
+    <div class="tray" id="tray">
+        <div class="piece-container" id="p1" onmousedown="startDrag(event, 0)" ontouchstart="startDrag(event, 0)"></div>
+        <div class="piece-container" id="p2" onmousedown="startDrag(event, 1)" ontouchstart="startDrag(event, 1)"></div>
+        <div class="piece-container" id="p3" onmousedown="startDrag(event, 2)" ontouchstart="startDrag(event, 2)"></div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 8;
+        let score = 0;
+        let board = Array(GRID_SIZE * GRID_SIZE).fill(0);
+        let trayPieces = [null, null, null];
+        
+        // Piece shapes (coordinate offsets)
+        const SHAPES = [
+            [[0,0], [0,1], [1,0], [1,1]], // Square
+            [[0,0], [0,1], [0,2]],        // I-3
+            [[0,0], [1,0], [2,0]],        // I-3 Vertical
+            [[0,0], [1,0], [1,1]],        // L-mini
+            [[0,0]],                      // Dot
+            [[0,0], [0,1], [1,1], [1,2]], // Z
+            [[0,0], [0,1], [0,2], [0,3]]  // I-4
+        ];
+
+        // Initialization
+        function init() {
+            const gridEl = document.getElementById('main-grid');
+            gridEl.innerHTML = '';
+            for (let i = 0; i < 64; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                gridEl.appendChild(cell);
+            }
+            refreshTray();
+            updateUI();
+        }
+
+        function refreshTray() {
+            for (let i = 0; i < 3; i++) {
+                const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+                trayPieces[i] = shape;
+                renderTrayPiece(i, shape);
+            }
+        }
+
+        function renderTrayPiece(index, shape) {
+            const container = document.getElementById(`p${index+1}`);
+            container.innerHTML = '';
+            container.style.visibility = 'visible';
+            
+            // Determine bounding box
+            const rows = Math.max(...shape.map(p => p[0])) + 1;
+            const cols = Math.max(...shape.map(p => p[1])) + 1;
+            
+            container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            container.style.width = `${cols * 20}px`;
+            container.style.height = `${rows * 20}px`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'piece-cell';
+                    if (shape.some(p => p[0] === r && p[1] === c)) cell.classList.add('active');
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        // Interaction Logic
+        let currentDrag = null;
+        let dragPieceIdx = -1;
+
+        function startDrag(e, idx) {
+            if (!trayPieces[idx]) return;
+            dragPieceIdx = idx;
+            const target = e.currentTarget;
+            currentDrag = target.cloneNode(true);
+            currentDrag.classList.add('dragging');
+            document.body.appendChild(currentDrag);
+            moveAt(e);
+        }
+
+        function moveAt(e) {
+            const x = e.clientX || e.touches[0].clientX;
+            const y = e.clientY || e.touches[0].clientY;
+            currentDrag.style.left = x - currentDrag.offsetWidth / 2 + 'px';
+            currentDrag.style.top = y - currentDrag.offsetHeight / 2 + 'px';
+        }
+
+        document.addEventListener('mousemove', (e) => currentDrag && moveAt(e));
+        document.addEventListener('touchmove', (e) => currentDrag && moveAt(e));
+
+        document.addEventListener('mouseup', (e) => endDrag(e));
+        document.addEventListener('touchend', (e) => endDrag(e.changedTouches[0]));
+
+        function endDrag(e) {
+            if (!currentDrag) return;
+            
+            const grid = document.getElementById('main-grid');
+            const rect = grid.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / (rect.width / 8));
+            const row = Math.floor(y / (rect.height / 8));
+
+            if (row >= 0 && row < 8 && col >= 0 && col < 8) {
+                tryPlace(row, col);
+            }
+
+            document.body.removeChild(currentDrag);
+            currentDrag = null;
+        }
+
+        function tryPlace(r, c) {
+            const shape = trayPieces[dragPieceIdx];
+            // Check fit
+            const fits = shape.every(p => {
+                const nr = r + p[0];
+                const nc = c + p[1];
+                return nr < 8 && nc < 8 && board[nr * 8 + nc] === 0;
+            });
+
+            if (fits) {
+                shape.forEach(p => board[(r + p[0]) * 8 + (c + p[1])] = 1);
+                document.getElementById(`p${dragPieceIdx+1}`).style.visibility = 'hidden';
+                trayPieces[dragPieceIdx] = null;
+                score += shape.length;
+                checkLines();
+                
+                if (trayPieces.every(p => p === null)) refreshTray();
+                updateUI();
+                checkGameOver();
+            }
+        }
+
+        function checkLines() {
+            let linesCleared = 0;
+            // Rows
+            for (let r = 0; r < 8; r++) {
+                if (board.slice(r * 8, r * 8 + 8).every(v => v === 1)) {
+                    for (let c = 0; c < 8; c++) board[r * 8 + c] = 0;
+                    linesCleared++;
+                }
+            }
+            // Columns
+            for (let c = 0; c < 8; c++) {
+                let col = [];
+                for (let r = 0; r < 8; r++) col.push(board[r * 8 + c]);
+                if (col.every(v => v === 1)) {
+                    for (let r = 0; r < 8; r++) board[r * 8 + c] = 0;
+                    linesCleared++;
+                }
+            }
+            if (linesCleared > 0) score += (linesCleared * 20);
+        }
+
+        function updateUI() {
+            document.getElementById('score-val').innerText = score;
+            const cells = document.querySelectorAll('.cell');
+            board.forEach((val, i) => {
+                cells[i].className = val === 1 ? 'cell filled' : 'cell';
+            });
+        }
+
+        function checkGameOver() {
+            // Check if any tray piece can fit anywhere
+            const canMove = trayPieces.some(shape => {
+                if (!shape) return false;
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if (shape.every(p => {
+                            const nr = r + p[0], nc = c + p[1];
+                            return nr < 8 && nc < 8 && board[nr * 8 + nc] === 0;
+                        })) return true;
+                    }
+                }
+                return false;
+            });
+
+            if (!canMove && trayPieces.some(p => p !== null)) {
+                alert("Game Over! Score: " + score);
+                board.fill(0);
+                score = 0;
+                refreshTray();
+                updateUI();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
