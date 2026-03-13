@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Math - JC Mini Games</title>
+    <style>
+        :root { --bg: #121212; --accent: #4CAF50; }
+        body { background: var(--bg); color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #problem { font-size: 3.5rem; margin-bottom: 20px; }
+        .input-box { background: #1e1e1e; border: 2px solid #333; color: white; font-size: 2rem; width: 150px; text-align: center; border-radius: 12px; padding: 10px; outline: none; }
+        .score { position: absolute; top: 20px; font-size: 1.5rem; color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="score">Score: <span id="score">0</span></div>
+    <div id="problem">5 + 3</div>
+    <input type="number" id="answer" class="input-box" autofocus>
+    <script>
+        let score = 0; let currentAns = 0;
+        function next() {
+            let a = Math.floor(Math.random() * 12) + 1;
+            let b = Math.floor(Math.random() * 12) + 1;
+            let op = Math.random() > 0.5 ? "+" : "-";
+            currentAns = op === "+" ? a + b : a - b;
+            document.getElementById("problem").innerText = `${a} ${op} ${b}`;
+            document.getElementById("answer").value = "";
+        }
+        document.getElementById("answer").oninput = (e) => {
+            if(parseInt(e.target.value) === currentAns) {
+                score++; document.getElementById("score").innerText = score;
+                next();
+            }
+        };
+        next();
+    </script>
+</body>
+</html>
