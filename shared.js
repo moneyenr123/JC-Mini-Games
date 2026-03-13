@@ -3,11 +3,11 @@ const head = document.head;
 
 const favicon = document.createElement('link');
 favicon.rel = 'icon';
-favicon.href = 'favicon.png';
+favicon.href = '../favicon.png';
 
 const appleIcon = document.createElement('link');
 appleIcon.rel = 'apple-touch-icon';
-appleIcon.href = 'favicon.png';
+appleIcon.href = '../favicon.png';
 
 const appleTitle = document.createElement('meta');
 appleTitle.name = 'apple-mobile-web-app-title';
